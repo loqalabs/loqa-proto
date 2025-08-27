@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package loqa.audio;
+
+option go_package = "loqa-voice-assistant/proto/go";
+
+// AudioService handles bidirectional audio streaming between pucks and hub
+service AudioService {
+  // StreamAudio handles real-time bidirectional audio streaming
+  rpc StreamAudio(stream AudioChunk) returns (stream AudioResponse);
+}
+
+// AudioChunk represents a chunk of audio data from a puck
+message AudioChunk {
+  string puck_id = 1;            // Unique identifier for the puck
+  bytes audio_data = 2;          // Raw audio data (16-bit PCM)
+  int32 sample_rate = 3;         // Sample rate (e.g., 16000 Hz)
+  bool is_wake_word = 4;         // Whether wake word was detected
+  bool is_end_of_speech = 5;     // Whether this is the end of utterance
+  int64 timestamp = 6;           // Unix timestamp in nanoseconds
+}
+
+// AudioResponse represents a response from the hub back to the puck
+message AudioResponse {
+  string request_id = 1;         // Request identifier for correlation
+  string transcription = 2;      // Speech-to-text result
+  string command = 3;            // Parsed command intent
+  string response_text = 4;      // Natural language response
+  bool success = 5;              // Whether processing was successful
+  string error = 6;              // Error message if unsuccessful
+}
