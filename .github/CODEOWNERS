@@ -1,0 +1,24 @@
+# Loqa Proto - Code Owners
+
+# Global ownership
+* @annabarnes1138
+
+# Protocol buffer definitions - critical for API compatibility
+*.proto @annabarnes1138
+
+# Generated Go bindings
+/go/ @annabarnes1138
+
+# Generation scripts and tools
+generate.sh @annabarnes1138
+Dockerfile* @annabarnes1138
+
+# CI/CD
+/.github/ @annabarnes1138
+
+# Dependencies
+/go/go.mod @annabarnes1138
+/go/go.sum @annabarnes1138
+
+# Documentation
+*.md @annabarnes1138
