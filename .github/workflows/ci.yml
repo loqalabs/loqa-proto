@@ -70,7 +70,7 @@ jobs:
         go test ./...
 
     - name: Upload Go bindings
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: go-bindings
         path: go/
@@ -122,7 +122,7 @@ jobs:
           audio.proto
 
     - name: Upload language bindings
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: multi-language-bindings
         path: |
