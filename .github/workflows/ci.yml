@@ -20,7 +20,7 @@ jobs:
     - name: Set up Protocol Buffer Compiler
       uses: arduino/setup-protoc@v2
       with:
-        version: '24.x'
+        version: '29.x'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Validate proto files
@@ -47,7 +47,7 @@ jobs:
     - name: Set up Protocol Buffer Compiler
       uses: arduino/setup-protoc@v2
       with:
-        version: '24.x'
+        version: '29.x'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Install protoc-gen-go
@@ -90,7 +90,7 @@ jobs:
     - name: Set up Protocol Buffer Compiler
       uses: arduino/setup-protoc@v2
       with:
-        version: '24.x'
+        version: '29.x'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Set up Python
