@@ -1,5 +1,7 @@
 # 📡 Loqa Proto
 
+[![CI/CD Pipeline](https://github.com/loqalabs/loqa-proto/actions/workflows/ci.yml/badge.svg)](https://github.com/loqalabs/loqa-proto/actions/workflows/ci.yml)
+
 Shared gRPC protocol definitions and generated bindings for the Loqa platform.
 
 ## Overview
