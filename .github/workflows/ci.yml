@@ -106,6 +106,7 @@ jobs:
       run: |
         mkdir -p python
         python -m grpc_tools.protoc \
+          --proto_path=. \
           --python_out=python/ \
           --grpc_python_out=python/ \
           audio.proto
@@ -120,6 +121,7 @@ jobs:
         npm install -g grpc-tools
         mkdir -p javascript
         grpc_tools_node_protoc \
+          --proto_path=. \
           --js_out=import_style=commonjs,binary:javascript/ \
           --grpc_out=grpc_js:javascript/ \
           audio.proto
