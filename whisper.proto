@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package whisper;
+
+option go_package = "github.com/loqalabs/loqa-proto/go/whisper";
+
+// Whisper transcription service
+service WhisperService {
+    // Transcribe audio data to text
+    rpc Transcribe(TranscribeRequest) returns (TranscribeResponse);
+    
+    // Health check
+    rpc Health(HealthRequest) returns (HealthResponse);
+}
+
+message TranscribeRequest {
+    // Audio data as raw PCM float32 samples
+    repeated float audio_data = 1;
+    
+    // Sample rate of the audio
+    int32 sample_rate = 2;
+    
+    // Language hint (optional, e.g., "en", "es", "fr")
+    string language = 3;
+    
+    // Request ID for tracking/logging
+    string request_id = 4;
+}
+
+message TranscribeResponse {
+    // Transcribed text
+    string text = 1;
+    
+    // Language detected/used
+    string language = 2;
+    
+    // Processing time in milliseconds
+    int64 processing_time_ms = 3;
+    
+    // Success status
+    bool success = 4;
+    
+    // Error message if not successful
+    string error_message = 5;
+    
+    // Request ID for tracking
+    string request_id = 6;
+}
+
+message HealthRequest {
+    // Empty for now
+}
+
+message HealthResponse {
+    // Service status
+    string status = 1;
+    
+    // Model information
+    string model_name = 2;
+    
+    // Version info
+    string version = 3;
+}
