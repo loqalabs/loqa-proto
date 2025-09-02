@@ -27,7 +27,7 @@ mkdir -p go
 protoc --go_out=go/ --go-grpc_out=go/ \
     --go_opt=paths=source_relative \
     --go-grpc_opt=paths=source_relative \
-    audio.proto
+    audio.proto whisper.proto
 
 echo "✅ Generated Go bindings in go/ directory"
 
