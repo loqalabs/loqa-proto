@@ -4,7 +4,7 @@
 // 	protoc        v5.29.3
 // source: audio.proto
 
-package _go
+package audio
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -217,7 +217,7 @@ const file_audio_proto_rawDesc = "" +
 	"\asuccess\x18\x05 \x01(\bR\asuccess\x12\x14\n" +
 	"\x05error\x18\x06 \x01(\tR\x05error2T\n" +
 	"\fAudioService\x12D\n" +
-	"\vStreamAudio\x12\x16.loqa.audio.AudioChunk\x1a\x19.loqa.audio.AudioResponse(\x010\x01B\x1fZ\x1dloqa-voice-assistant/proto/gob\x06proto3"
+	"\vStreamAudio\x12\x16.loqa.audio.AudioChunk\x1a\x19.loqa.audio.AudioResponse(\x010\x01B)Z'github.com/loqalabs/loqa-proto/go/audiob\x06proto3"
 
 var (
 	file_audio_proto_rawDescOnce sync.Once

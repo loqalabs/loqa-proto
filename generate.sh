@@ -20,14 +20,40 @@ set -e
 
 echo "🔧 Generating protocol buffer bindings..."
 
-# Create output directory if it doesn't exist
-mkdir -p go
+# Clean and create output directories
+rm -rf go/
+mkdir -p go/audio go/whisper
 
 # Generate Go bindings
 protoc --go_out=go/ --go-grpc_out=go/ \
     --go_opt=paths=source_relative \
     --go-grpc_opt=paths=source_relative \
     audio.proto whisper.proto
+
+# Move generated files to correct subdirectories
+mv go/audio*.pb.go go/audio/ 2>/dev/null || true
+mv go/whisper*.pb.go go/whisper/ 2>/dev/null || true
+
+# Create go.mod if it doesn't exist
+if [ ! -f go/go.mod ]; then
+    cat > go/go.mod << 'EOF'
+module github.com/loqalabs/loqa-proto/go
+
+go 1.24
+
+require (
+	google.golang.org/grpc v1.65.0
+	google.golang.org/protobuf v1.34.2
+)
+
+require (
+	golang.org/x/net v0.26.0 // indirect
+	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240604185151-ef581f913117 // indirect
+)
+EOF
+fi
 
 echo "✅ Generated Go bindings in go/ directory"
 

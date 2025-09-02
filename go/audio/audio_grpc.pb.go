@@ -4,7 +4,7 @@
 // - protoc             v5.29.3
 // source: audio.proto
 
-package _go
+package audio
 
 import (
 	context "context"
