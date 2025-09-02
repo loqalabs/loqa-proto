@@ -20,9 +20,15 @@ set -e
 
 echo "🔧 Generating protocol buffer bindings..."
 
-# Clean and create output directories
+# Clean and create output directories (preserve go.sum)
+if [ -f go/go.sum ]; then
+    cp go/go.sum /tmp/go.sum.backup
+fi
 rm -rf go/
 mkdir -p go/audio go/whisper
+if [ -f /tmp/go.sum.backup ]; then
+    mv /tmp/go.sum.backup go/go.sum
+fi
 
 # Generate Go bindings
 protoc --go_out=go/ --go-grpc_out=go/ \
