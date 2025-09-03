@@ -201,7 +201,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: go-bindings
-          path: go
+          path: _tmp_bindings
 
       - name: Ensure go/ directory exists
         run: mkdir -p go
@@ -215,10 +215,15 @@ jobs:
 
       - name: Overwrite with go/ contents
         run: |
-          git rm -rf . --ignore-unmatch
-          cp -r go/. .
-          git add .
-          git commit -m "Update Go bindings from main" || echo "No changes to commit"
+          if [ -d "_tmp_bindings/go" ]; then
+            git rm -rf . --ignore-unmatch
+            cp -r _tmp_bindings/go/. . || { echo "::warning::Downloaded artifact not found. Skipping publish step."; exit 0; }
+            git add .
+            git commit -m "Update Go bindings from main" || echo "No changes to commit"
+          else
+            echo "::warning::Go bindings artifact not found. Skipping publish step."
+            exit 0
+          fi
 
       - name: Force push to bindings/go branch
         run: |
