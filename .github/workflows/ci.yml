@@ -191,6 +191,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: generate-go
     if: github.ref == 'refs/heads/main'
+    env:
+      BINDINGS_BRANCH: bindings/go
+      BOT_NAME: github-actions[bot]
+      BOT_EMAIL: github-actions[bot]@users.noreply.github.com
+      BINDINGS_DIR: _tmp_bindings
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -201,23 +206,23 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: go-bindings
-          path: _tmp_bindings
+          path: ${{ env.BINDINGS_DIR }}
 
       - name: Ensure go/ directory exists
         run: mkdir -p go
 
       - name: Switch to bindings/go branch
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin bindings/go || true
-          git checkout -B bindings/go origin/bindings/go || git checkout -b bindings/go
+          git config user.name "${{ env.BOT_NAME }}"
+          git config user.email "${{ env.BOT_EMAIL }}"
+          git fetch origin ${{ env.BINDINGS_BRANCH }} || true
+          git checkout -B ${{ env.BINDINGS_BRANCH }} origin/${{ env.BINDINGS_BRANCH }} || git checkout -b ${{ env.BINDINGS_BRANCH }}
 
       - name: Overwrite with go/ contents
         run: |
-          if [ -d "_tmp_bindings/go" ]; then
+          if [ -d "${{ env.BINDINGS_DIR }}/go" ]; then
             git rm -rf . --ignore-unmatch
-            cp -r _tmp_bindings/go/. . || { echo "::warning::Downloaded artifact not found. Skipping publish step."; exit 0; }
+            cp -r ${{ env.BINDINGS_DIR }}/go/. . || { echo "::warning::Downloaded artifact not found. Skipping publish step."; exit 0; }
             git add .
             git commit -m "Update Go bindings from main" || echo "No changes to commit"
           else
@@ -227,7 +232,7 @@ jobs:
 
       - name: Force push to bindings/go branch
         run: |
-          git push origin bindings/go --force
+          git push https://x-access-token:${{ secrets.BINDINGS_PUSH_TOKEN }}@github.com/loqalabs/loqa-proto.git ${{ env.BINDINGS_BRANCH }} --force
 
   tag-bindings:
     name: Tag Published Go Bindings
