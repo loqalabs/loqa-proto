@@ -272,8 +272,7 @@ jobs:
           major=$(echo $old | cut -d. -f1)
           minor=$(echo $old | cut -d. -f2)
           patch=$(echo $old | cut -d. -f3)
-          next_tag="v$major.$minor.$((patch + 1))"
-          echo "next_tag=$next_tag" >> $GITHUB_OUTPUT
+          echo "next_tag=v$major.$minor.$((patch + 1))" >> "$GITHUB_OUTPUT"
 
       - name: Tag and push
         run: |
