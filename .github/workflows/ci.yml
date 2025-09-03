@@ -244,7 +244,7 @@ jobs:
 
       - name: Force push to bindings/go branch
         run: |
-          git push https://x-access-token:${{ secrets.BINDINGS_PUSH_TOKEN }}@github.com/loqalabs/loqa-proto.git ${{ env.BINDINGS_BRANCH }} --force
+          git push origin ${{ env.BINDINGS_BRANCH }} --force
 
   tag-bindings:
     name: Tag Published Go Bindings
