@@ -236,7 +236,7 @@ jobs:
           git remote add origin https://x-access-token:${{ secrets.BINDINGS_PUSH_TOKEN }}@github.com/loqalabs/loqa-proto.git
           git remote -v
 
-      - name: DEBUG: Show Git remote and auth
+      - name: DEBUG - Show Git remote and auth
         run: |
           git remote -v
           git config --get remote.origin.url
@@ -268,7 +268,7 @@ jobs:
       - name: Bump patch version
         id: bump
         run: |
-          old: ${{ steps.get_tag.outputs.latest }}
+          old=${{ steps.get_tag.outputs.latest }}
           major=$(echo $old | cut -d. -f1)
           minor=$(echo $old | cut -d. -f2)
           patch=$(echo $old | cut -d. -f3)
