@@ -203,6 +203,9 @@ jobs:
           name: go-bindings
           path: go
 
+      - name: Ensure go/ directory exists
+        run: mkdir -p go
+
       - name: Switch to bindings/go branch
         run: |
           git config user.name "github-actions[bot]"
