@@ -46,9 +46,19 @@ Loqa Proto contains:
 
 Include this repository as a dependency in Loqa services to access shared protocol definitions and generated client libraries.
 
+### Go Consumers
+
+For Go projects, use the `bindings/go` branch to import the generated Go bindings. You can use a `replace` directive in your `go.mod` to point to the correct branch. For example:
+
+```
+replace github.com/loqalabs/loqa-proto => github.com/loqalabs/loqa-proto bindings/go
+```
+
+This ensures your project uses the generated Go code from the `bindings/go` branch.
+
 ## Code Generation
 
-Protocol buffer compilation and code generation is handled automatically via build scripts.
+Protocol buffer compilation and code generation is handled automatically. Generated bindings for supported languages are produced by GitHub Actions workflows (CI/CD), so you do not need to run local build scripts unless developing or updating the protocol definitions.
 
 ## Getting Started
 
