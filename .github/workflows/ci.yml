@@ -197,6 +197,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Download Go bindings
+        uses: actions/download-artifact@v4
+        with:
+          name: go-bindings
+          path: go
+
       - name: Switch to bindings/go branch
         run: |
           git config user.name "github-actions[bot]"
