@@ -23,6 +23,9 @@ jobs:
         version: '29.3'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Print protoc version
+      run: protoc --version
+
     - name: Validate proto files
       run: |
         protoc --descriptor_set_out=/dev/null audio.proto
@@ -128,6 +131,16 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
+
+    - name: Cache Go modules and build cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
 
     - name: Generate JavaScript bindings
       run: |
