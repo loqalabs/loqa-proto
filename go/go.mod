@@ -1,6 +1,6 @@
 module github.com/loqalabs/loqa-proto/go
 
-go 1.22.2
+go 1.23.0
 
 require (
 	google.golang.org/grpc v1.65.0
