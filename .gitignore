@@ -52,6 +52,7 @@ logs/
 tmp/
 temp/
 .tmp/
+artifact_bindings/
 
 # Protocol buffer generated files (keep the ones we commit)
 # *.pb.go  # We actually commit these for now
