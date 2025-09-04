@@ -168,7 +168,7 @@ jobs:
 
   security:
     name: Security Analysis
-    uses: loqalabs/.github/workflows/reusable-security.yml@main
+    uses: loqalabs/.github/.github/workflows/reusable-security.yml@main
     with:
       language: 'go'
       go-version: '1.23.0'
