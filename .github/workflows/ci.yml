@@ -16,10 +16,10 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Protocol Buffer Compiler
-      uses: arduino/setup-protoc@v2
+      uses: arduino/setup-protoc@v3
       with:
         version: '29.3'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -38,10 +38,10 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: '1.22.2'
 
@@ -59,7 +59,7 @@ jobs:
           ${{ runner.os }}-go-
 
     - name: Set up Protocol Buffer Compiler
-      uses: arduino/setup-protoc@v2
+      uses: arduino/setup-protoc@v3
       with:
         version: '29.3'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -102,16 +102,16 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Protocol Buffer Compiler
-      uses: arduino/setup-protoc@v2
+      uses: arduino/setup-protoc@v3
       with:
         version: '29.3'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
         python-version: '3.11'
 
@@ -129,7 +129,7 @@ jobs:
           audio.proto
 
     - name: Set up Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
         node-version: '18'
 
@@ -172,7 +172,7 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
@@ -199,13 +199,13 @@ jobs:
       BINDINGS_DIR: artifact_bindings
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Download Go bindings
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: go-bindings
           path: ${{ env.BINDINGS_DIR }}
@@ -252,7 +252,7 @@ jobs:
 
     steps:
       - name: Checkout bindings branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: bindings/go
           fetch-depth: 0
