@@ -60,4 +60,4 @@ artifact_bindings/
 # *.pb.cc
 
 # Local config overrides
-config.local.yml
+config.local.yml# Trigger CI after history cleanup
