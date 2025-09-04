@@ -19,7 +19,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Protocol Buffer Compiler
-      uses: arduino/setup-protoc@v2
+      uses: arduino/setup-protoc@v3
       with:
         version: '29.3'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -59,7 +59,7 @@ jobs:
           ${{ runner.os }}-go-
 
     - name: Set up Protocol Buffer Compiler
-      uses: arduino/setup-protoc@v2
+      uses: arduino/setup-protoc@v3
       with:
         version: '29.3'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -105,7 +105,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Protocol Buffer Compiler
-      uses: arduino/setup-protoc@v2
+      uses: arduino/setup-protoc@v3
       with:
         version: '29.3'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
