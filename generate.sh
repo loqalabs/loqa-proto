@@ -18,15 +18,14 @@ fi
 
 find go/ -type f ! -name 'go.mod' ! -name 'go.sum' -delete
 find go/ -type d -empty -delete
-mkdir -p go/audio go/whisper
+mkdir -p go/audio
 
 protoc --go_out=go/ --go-grpc_out=go/ \
     --go_opt=paths=source_relative \
     --go-grpc_opt=paths=source_relative \
-    audio.proto whisper.proto
+    audio.proto
 
 mv go/audio*.pb.go go/audio/ 2>/dev/null || true
-mv go/whisper*.pb.go go/whisper/ 2>/dev/null || true
 
 echo "Generation complete."
 
