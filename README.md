@@ -20,7 +20,7 @@ Loqa Proto contains:
 ## Protocol Definitions
 
 ### Audio Service
-- Audio streaming from pucks to hub
+- Audio streaming from relay devices to hub
 - Real-time audio data transmission
 - Metadata and configuration
 
