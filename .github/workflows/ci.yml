@@ -33,6 +33,7 @@ jobs:
     with:
       language: 'go'
       go-version: '1.23.0'
+      working-directory: 'go'
 
   package-release:
     name: Package Release Assets
