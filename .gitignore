@@ -52,6 +52,7 @@ logs/
 tmp/
 temp/
 .tmp/
+artifact_bindings/
 
 # Protocol buffer generated files (keep the ones we commit)
 # *.pb.go  # We actually commit these for now
@@ -59,4 +60,6 @@ temp/
 # *.pb.cc
 
 # Local config overrides
-config.local.yml
+config.local.yml# Trigger CI after history cleanup
+
+node_modules
