@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package loqa.audio;
 
-option go_package = "loqa-voice-assistant/proto/go";
+option go_package = "github.com/loqalabs/loqa-proto/go/audio";
 
 // AudioService handles bidirectional audio streaming between pucks and hub
 service AudioService {

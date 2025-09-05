@@ -1,38 +1,47 @@
 #!/bin/bash
 
-# This file is part of Loqa (https://github.com/loqalabs/loqa).
-# Copyright (C) 2025 Loqa Labs
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 set -e
 
-echo "🔧 Generating protocol buffer bindings..."
+COMMIT_CHANGES=false
+for arg in "$@"; do
+  if [[ "$arg" == "--commit" ]]; then
+    COMMIT_CHANGES=true
+  fi
+done
 
-# Create output directory if it doesn't exist
-mkdir -p go
+# Check for uncommitted changes in go.mod or go.sum
+if ! git diff --quiet go/go.mod go/go.sum; then
+  echo "❌ Uncommitted changes in go.mod or go.sum. Please commit or stash before running."
+  exit 1
+fi
 
-# Generate Go bindings
+find go/ -type f ! -name 'go.mod' ! -name 'go.sum' -delete
+find go/ -type d -empty -delete
+mkdir -p go/audio go/whisper
+
 protoc --go_out=go/ --go-grpc_out=go/ \
     --go_opt=paths=source_relative \
     --go-grpc_opt=paths=source_relative \
     audio.proto whisper.proto
 
-echo "✅ Generated Go bindings in go/ directory"
+mv go/audio*.pb.go go/audio/ 2>/dev/null || true
+mv go/whisper*.pb.go go/whisper/ 2>/dev/null || true
 
-# Future: Generate bindings for other languages
-# protoc --python_out=python/ audio.proto
-# protoc --js_out=javascript/ audio.proto
+echo "Generation complete."
 
-echo "🎯 Protocol buffer generation complete!"
+if ! git diff --quiet go/; then
+  if $COMMIT_CHANGES; then
+    echo "✅ Committing updated Go bindings..."
+    git add go/
+    git commit -m 'Update generated protobuf bindings'
+    echo "📤 Don't forget to push your changes:"
+    echo "    git push"
+  else
+    echo "✅ Go bindings updated. Don't forget to commit the changes:"
+    echo "    git add go/"
+    echo "    git commit -m 'Update generated protobuf bindings'"
+  fi
+else
+  echo "🟢 No changes to Go bindings"
+fi
