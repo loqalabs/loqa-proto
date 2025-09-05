@@ -7,10 +7,11 @@
 package audio
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -20,13 +21,13 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AudioChunk represents a chunk of audio data from a puck
+// AudioChunk represents a chunk of audio data from a relay
 type AudioChunk struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	PuckId        string `protobuf:"bytes,1,opt,name=puck_id,json=puckId,proto3" json:"puck_id,omitempty"`                           // Unique identifier for the puck
+	RelayId       string `protobuf:"bytes,1,opt,name=relay_id,json=relayId,proto3" json:"relay_id,omitempty"`                        // Unique identifier for the relay
 	AudioData     []byte `protobuf:"bytes,2,opt,name=audio_data,json=audioData,proto3" json:"audio_data,omitempty"`                  // Raw audio data (16-bit PCM)
 	SampleRate    int32  `protobuf:"varint,3,opt,name=sample_rate,json=sampleRate,proto3" json:"sample_rate,omitempty"`              // Sample rate (e.g., 16000 Hz)
 	IsWakeWord    bool   `protobuf:"varint,4,opt,name=is_wake_word,json=isWakeWord,proto3" json:"is_wake_word,omitempty"`            // Whether wake word was detected
@@ -66,9 +67,9 @@ func (*AudioChunk) Descriptor() ([]byte, []int) {
 	return file_audio_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AudioChunk) GetPuckId() string {
+func (x *AudioChunk) GetRelayId() string {
 	if x != nil {
-		return x.PuckId
+		return x.RelayId
 	}
 	return ""
 }
@@ -108,7 +109,7 @@ func (x *AudioChunk) GetTimestamp() int64 {
 	return 0
 }
 
-// AudioResponse represents a response from the hub back to the puck
+// AudioResponse represents a response from the hub back to the relay
 type AudioResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

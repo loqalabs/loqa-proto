@@ -4,15 +4,15 @@ package loqa.audio;
 
 option go_package = "github.com/loqalabs/loqa-proto/go/audio";
 
-// AudioService handles bidirectional audio streaming between pucks and hub
+// AudioService handles bidirectional audio streaming between relay devices and hub
 service AudioService {
   // StreamAudio handles real-time bidirectional audio streaming
   rpc StreamAudio(stream AudioChunk) returns (stream AudioResponse);
 }
 
-// AudioChunk represents a chunk of audio data from a puck
+// AudioChunk represents a chunk of audio data from a relay
 message AudioChunk {
-  string puck_id = 1;            // Unique identifier for the puck
+  string relay_id = 1;            // Unique identifier for the relay
   bytes audio_data = 2;          // Raw audio data (16-bit PCM)
   int32 sample_rate = 3;         // Sample rate (e.g., 16000 Hz)
   bool is_wake_word = 4;         // Whether wake word was detected
@@ -20,7 +20,7 @@ message AudioChunk {
   int64 timestamp = 6;           // Unix timestamp in nanoseconds
 }
 
-// AudioResponse represents a response from the hub back to the puck
+// AudioResponse represents a response from the hub back to the relay
 message AudioResponse {
   string request_id = 1;         // Request identifier for correlation
   string transcription = 2;      // Speech-to-text result
