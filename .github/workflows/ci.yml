@@ -15,260 +15,69 @@ permissions:
   actions: read
 
 jobs:
-  validate:
-    name: Validate Protocol Buffers
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
-
-    - name: Set up Protocol Buffer Compiler
-      uses: arduino/setup-protoc@v3
-      with:
-        version: '29.3'
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Print protoc version
-      run: protoc --version
-
-    - name: Validate proto files
-      run: |
-        protoc --descriptor_set_out=/dev/null audio.proto
-
-  generate-go:
-    name: Generate Go Bindings
-    runs-on: ubuntu-latest
-    needs: validate
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
-
-    - name: Set up Go
-      uses: actions/setup-go@v6
-      with:
-        go-version: '1.23.0'
-
-    - name: Verify Go version
-      run: go version
-
-    - name: Cache Go modules and build cache
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-
-    - name: Set up Protocol Buffer Compiler
-      uses: arduino/setup-protoc@v3
-      with:
-        version: '29.3'
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Print protoc version
-      run: protoc --version
-
-    - name: Install protoc-gen-go
-      run: |
-        go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.31.0
-        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0
-
-    - name: Generate Go bindings
-      run: |
-        ./generate.sh
-
-    - name: Check for differences
-      run: |
-        git diff --exit-code go/ || (
-          echo "::error::Go bindings are out of date. Please run ./generate.sh and commit the result."
-          exit 1
-        )
-
-    - name: Test Go module
-      run: |
-        cd go
-        go mod tidy
-        go test ./...
-
-    - name: Upload Go bindings
-      uses: actions/upload-artifact@v4
-      with:
-        name: go-bindings
-        path: go/
-
-  generate-other:
-    name: Generate Other Language Bindings
-    runs-on: ubuntu-latest
-    needs: validate
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
-
-    - name: Set up Protocol Buffer Compiler
-      uses: arduino/setup-protoc@v3
-      with:
-        version: '29.3'
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Set up Python
-      uses: actions/setup-python@v6
-      with:
-        python-version: '3.11'
-
-    - name: Install Python protobuf
-      run: |
-        pip install grpcio-tools
-
-    - name: Generate Python bindings
-      run: |
-        mkdir -p python
-        python -m grpc_tools.protoc \
-          --proto_path=. \
-          --python_out=python/ \
-          --grpc_python_out=python/ \
-          audio.proto
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v5
-      with:
-        node-version: '18'
-
-    - name: Cache Go modules and build cache
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-
-    - name: Generate JavaScript bindings
-      run: |
-        npm install -g grpc-tools
-        mkdir -p javascript
-        grpc_tools_node_protoc \
-          --proto_path=. \
-          --js_out=import_style=commonjs,binary:javascript/ \
-          --grpc_out=grpc_js:javascript/ \
-          audio.proto
-
-    - name: Upload language bindings
-      uses: actions/upload-artifact@v4
-      with:
-        name: multi-language-bindings
-        path: |
-          python/
-          javascript/
+  generate-bindings:
+    name: Generate Protocol Buffer Bindings
+    uses: loqalabs/.github/.github/workflows/proto/generate-bindings.yml@main
+    with:
+      protoc-version: '29.3'
+      go-version: '1.23.0'
+      python-version: '3.11'
+      node-version: '20'
+      languages: 'go,python,javascript'
+      proto-files: 'audio.proto'
+      generate-script: './generate.sh'
 
   security:
     name: Security Analysis
-    uses: loqalabs/.github/.github/workflows/reusable-security.yml@main
+    uses: loqalabs/.github/.github/workflows/security-scan.yml@main
     with:
       language: 'go'
       go-version: '1.23.0'
-  publish-bindings:
-    name: Publish Go Bindings to bindings/go branch
+
+  package-release:
+    name: Package Release Assets
     runs-on: ubuntu-latest
-    needs: generate-go
-    if: github.ref == 'refs/heads/main'
-    env:
-      BINDINGS_BRANCH: bindings/go
-      BOT_NAME: github-actions[bot]
-      BOT_EMAIL: github-actions[bot]@users.noreply.github.com
-      BINDINGS_DIR: artifact_bindings
+    needs: [generate-bindings, security]
+    if: github.event_name == 'release'
+    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-          persist-credentials: false
+    - name: Checkout code
+      uses: actions/checkout@v5
 
-      - name: Download Go bindings
-        uses: actions/download-artifact@v5
-        with:
-          name: go-bindings
-          path: ${{ env.BINDINGS_DIR }}
+    - name: Download all binding artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./bindings
 
-      - name: Ensure go/ directory exists
-        run: mkdir -p go
+    - name: Package release assets
+      run: |
+        mkdir -p release-assets
+        
+        # Package Go bindings
+        if [[ -d "bindings/go-bindings" ]]; then
+          tar -czf release-assets/go-bindings-${{ github.ref_name }}.tar.gz -C bindings go-bindings
+        fi
+        
+        # Package Python bindings
+        if [[ -d "bindings/python-bindings" ]]; then
+          tar -czf release-assets/python-bindings-${{ github.ref_name }}.tar.gz -C bindings python-bindings
+        fi
+        
+        # Package JavaScript bindings
+        if [[ -d "bindings/javascript-bindings" ]]; then
+          tar -czf release-assets/javascript-bindings-${{ github.ref_name }}.tar.gz -C bindings javascript-bindings
+        fi
+        
+        ls -la release-assets/
 
-      - name: Switch to bindings/go branch
-        run: |
-          git config user.name "${{ env.BOT_NAME }}"
-          git config user.email "${{ env.BOT_EMAIL }}"
-          git fetch origin ${{ env.BINDINGS_BRANCH }} || true
-          git checkout -B ${{ env.BINDINGS_BRANCH }} origin/${{ env.BINDINGS_BRANCH }} || git checkout -b ${{ env.BINDINGS_BRANCH }}
+    - name: Upload release assets
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-assets
+        path: release-assets/
 
-      - name: Overwrite with go/ contents
-        run: |
-          if [ -d "${{ env.BINDINGS_DIR }}/go" ]; then
-            git rm -rf . --ignore-unmatch
-            cp -r ${{ env.BINDINGS_DIR }}/go/. . || { echo "::warning::Downloaded artifact not found. Skipping publish step."; exit 0; }
-            git add .
-            git commit -m "Update Go bindings from main" || echo "No changes to commit"
-          else
-            echo "::warning::Go bindings artifact not found. Skipping publish step."
-            exit 0
-          fi
-
-      - name: Configure git remote with PAT
-        run: |
-          git remote remove origin || true
-          git remote add origin https://x-access-token:${{ secrets.BINDINGS_PUSH_TOKEN }}@github.com/loqalabs/loqa-proto.git
-          git remote -v
-
-      - name: Force push to bindings/go branch
-        run: |
-          git push origin ${{ env.BINDINGS_BRANCH }} --force
-
-  tag-bindings:
-    name: Tag Published Go Bindings
-    runs-on: ubuntu-latest
-    needs: publish-bindings
-    if: github.ref == 'refs/heads/main'
-    env:
-      BINDINGS_PUSH_TOKEN: ${{ secrets.BINDINGS_PUSH_TOKEN }}
-
-    steps:
-      - name: Checkout bindings branch
-        uses: actions/checkout@v5
-        with:
-          ref: bindings/go
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Get latest semver tag
-        id: get_tag
-        run: |
-          latest=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)
-          if [ -z "$latest" ]; then
-            latest="v0.0.0"
-          fi
-          echo "latest=$latest" >> $GITHUB_OUTPUT
-
-      - name: Bump patch version
-        id: bump
-        run: |
-          old=${{ steps.get_tag.outputs.latest }}
-          major=$(echo $old | cut -d. -f1)
-          minor=$(echo $old | cut -d. -f2)
-          patch=$(echo $old | cut -d. -f3)
-          echo "next_tag=v${major#v}.${minor}.$((patch + 1))" >> "$GITHUB_OUTPUT"
-
-      - name: Configure git remote with PAT
-        run: |
-          git remote remove origin || true
-          git remote add origin https://x-access-token:${{ secrets.BINDINGS_PUSH_TOKEN }}@github.com/loqalabs/loqa-proto.git
-
-      - name: Tag and push
-        run: |
-          git config user.name "Loqa Bot"
-          git config user.email "loqa-bot@users.noreply.github.com"
-          git tag ${{ steps.bump.outputs.next_tag }}
-          git push origin ${{ steps.bump.outputs.next_tag }}
+    - name: Attach to release
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: release-assets/*
