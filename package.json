@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "devDependencies": {
+    "grpc-tools": "^1.11.4",
+    "google-protobuf": "^4.0.0"
+  }
+}

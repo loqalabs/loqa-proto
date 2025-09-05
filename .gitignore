@@ -61,3 +61,5 @@ artifact_bindings/
 
 # Local config overrides
 config.local.yml# Trigger CI after history cleanup
+
+node_modules
