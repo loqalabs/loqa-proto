@@ -54,19 +54,23 @@ jobs:
       run: |
         mkdir -p release-assets
         
+        # Sanitize ref name for filenames (replace / with -)
+        SAFE_REF_NAME="${{ github.ref_name }}"
+        SAFE_REF_NAME="${SAFE_REF_NAME//\//-}"
+        
         # Package Go bindings
         if [[ -d "bindings/go-bindings" ]]; then
-          tar -czf release-assets/go-bindings-${{ github.ref_name }}.tar.gz -C bindings go-bindings
+          tar -czf release-assets/go-bindings-${SAFE_REF_NAME}.tar.gz -C bindings go-bindings
         fi
         
         # Package Python bindings
         if [[ -d "bindings/python-bindings" ]]; then
-          tar -czf release-assets/python-bindings-${{ github.ref_name }}.tar.gz -C bindings python-bindings
+          tar -czf release-assets/python-bindings-${SAFE_REF_NAME}.tar.gz -C bindings python-bindings
         fi
         
         # Package JavaScript bindings
         if [[ -d "bindings/javascript-bindings" ]]; then
-          tar -czf release-assets/javascript-bindings-${{ github.ref_name }}.tar.gz -C bindings javascript-bindings
+          tar -czf release-assets/javascript-bindings-${SAFE_REF_NAME}.tar.gz -C bindings javascript-bindings
         fi
         
         ls -la release-assets/
