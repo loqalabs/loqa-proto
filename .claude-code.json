@@ -34,7 +34,16 @@
     "scope_boundaries": "Ask for clarification when scope is unclear",
     "technical_approach": "Propose options when multiple paths exist", 
     "dependencies": "Stop and ask when blockers are found",
-    "testing": "Include appropriate test coverage for changes"
+    "testing": {
+      "coverage_requirements": "Maintain high test coverage for all code changes",
+      "schema_validation": "Test all protobuf schema definitions and gRPC contracts",
+      "backward_compatibility": "Test that changes maintain compatibility with existing services", 
+      "edge_cases": "Test error conditions, boundary values, and failure scenarios",
+      "regression_tests": "Add tests that prevent reoccurrence of fixed bugs",
+      "test_before_commit": "Run existing tests before committing to ensure no breakage",
+      "contract_testing": "Verify service contracts and API specifications",
+      "breaking_change_detection": "Test and document any breaking changes to protocols"
+    }
   },
   "repository_context": {
     "service_role": "Protocol definitions and shared contracts - defines communication interfaces between all services",
