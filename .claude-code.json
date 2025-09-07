@@ -37,11 +37,20 @@
     "testing": "Include appropriate test coverage for changes"
   },
   "repository_context": {
-    "structure": "loqalabs/ contains multiple individual git repositories",
-    "cross_repo_workflow": {
-      "simple_changes": "Make directly to main branch of supporting repos",
-      "complex_changes": "Create matching feature branches across affected repos",
-      "merge_order": "Supporting repos first, primary repo last"
+    "service_role": "Protocol definitions and shared contracts - defines communication interfaces between all services",
+    "service_type": "Protocol/schema definitions (protobuf, gRPC)",
+    "used_by": ["loqa-hub", "loqa-commander", "loqa-relay", "loqa-device-service", "loqa-skills"],
+    "microservice_architecture": {
+      "structure": "Part of loqalabs/ microservice ecosystem - each subfolder is an independent git repository",
+      "peer_services_location": "../ (one folder up from current repo)",
+      "check_before_cloning": "Always check if ../SERVICE_NAME exists before attempting to clone repositories",
+      "foundational_role": "Changes here affect ALL other services - coordinate carefully",
+      "breaking_changes": "Require coordinated updates across all consuming services",
+      "cross_service_changes": {
+        "proto_updates": "Always coordinate with consuming services before making breaking changes",
+        "complex_changes": "Create matching feature branches across ALL affected repos",
+        "merge_order": "This repo FIRST, then all consuming services in dependency order"
+      }
     }
   },
   "best_practices": [
