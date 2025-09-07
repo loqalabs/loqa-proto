@@ -1,0 +1,12 @@
+version: v1
+deps:
+  - buf.build/googleapis/googleapis
+lint:
+  use:
+    - DEFAULT
+  except:
+    - FIELD_LOWER_SNAKE_CASE  # Allow camelCase fields for JSON compatibility
+    - FILE_LOWER_SNAKE_CASE   # Allow existing file naming
+breaking:
+  use:
+    - FILE
