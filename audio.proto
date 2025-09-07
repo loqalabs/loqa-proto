@@ -28,4 +28,7 @@ message AudioResponse {
   string response_text = 4;      // Natural language response
   bool success = 5;              // Whether processing was successful
   string error = 6;              // Error message if unsuccessful
+  bytes response_audio = 7;      // TTS audio data (MP3, WAV, etc.)
+  string audio_format = 8;       // Audio format (mp3, wav, opus, flac)
+  float audio_duration = 9;      // Audio duration in seconds
 }
