@@ -53,7 +53,7 @@
   "repository_context": {
     "service_role": "Protocol definitions and shared contracts - defines communication interfaces between all services",
     "service_type": "Protocol/schema definitions (protobuf, gRPC)",
-    "used_by": ["loqa-hub", "loqa-commander", "loqa-relay", "loqa-device-service", "loqa-skills"],
+    "used_by": ["loqa-hub", "loqa-commander", "loqa-relay", "loqa-skills"],
     "microservice_architecture": {
       "structure": "Part of loqalabs/ microservice ecosystem - each subfolder is an independent git repository",
       "peer_services_location": "../ (one folder up from current repo)",
