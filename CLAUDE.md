@@ -13,7 +13,7 @@ Loqa Proto contains:
 ## Architecture Role
 
 - **Service Type**: Protocol definitions and shared contracts (protobuf/gRPC)
-- **Used By**: ALL other services - loqa-hub, loqa-commander, loqa-relay, loqa-device-service, loqa-skills
+- **Used By**: ALL other services - loqa-hub, loqa-commander, loqa-relay, loqa-skills
 - **Critical Impact**: Changes here affect every service in the ecosystem
 - **Dependency Order**: This repo must be updated FIRST, then all consuming services
 
@@ -123,7 +123,7 @@ typescript/                # TypeScript bindings (planned)
 # 4. Update consuming services in dependency order:
 #    - loqa-skills (if affected)
 #    - loqa-hub (core processing)
-#    - loqa-relay, loqa-device-service (client services)
+#    - loqa-relay (client service)
 #    - loqa-commander (UI service)
 # 5. Test cross-service compatibility
 # 6. Merge in coordinated fashion
