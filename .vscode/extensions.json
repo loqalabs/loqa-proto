@@ -1,0 +1,23 @@
+{
+    "recommendations": [
+        // Protocol Buffer support
+        "zxh404.vscode-proto3",
+        
+        // Go development for generated bindings
+        "golang.go",
+        
+        // Shell script support for generate.sh
+        "timonwong.shellcheck",
+        "foxundermoon.shell-format",
+        
+        // YAML for configuration
+        "redhat.vscode-yaml",
+        
+        // General productivity
+        "ms-vscode.vscode-json",
+        "christian-kohler.path-intellisense",
+        
+        // Git integration
+        "eamodio.gitlens"
+    ]
+}

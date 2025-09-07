@@ -1,0 +1,78 @@
+{
+    // Go language settings for generated bindings
+    "go.formatTool": "gofmt",
+    "go.lintTool": "golangci-lint",
+    "go.lintFlags": [
+        "--config", ".golangci.yml",
+        "--fast"
+    ],
+    "go.vetOnSave": "package",
+    "go.buildOnSave": "off",
+    "go.lintOnSave": "package",
+    "go.coverOnSave": false,
+    "go.formatFlags": ["-s"],
+    
+    // Editor settings for auto-formatting on save
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit",
+        "source.fixAll": "explicit"
+    },
+    
+    // Go-specific formatting (for generated bindings)
+    "[go]": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    },
+    
+    // Protocol Buffer specific formatting
+    "[proto3]": {
+        "editor.formatOnSave": true,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+    },
+    
+    // JSON and YAML for configuration
+    "[json]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    
+    "[yaml]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "redhat.vscode-yaml"
+    },
+    
+    // Shell scripts formatting
+    "[shellscript]": {
+        "editor.formatOnSave": true,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+    },
+    
+    // File associations
+    "files.associations": {
+        "*.proto": "proto3",
+        ".golangci.yml": "yaml",
+        "generate.sh": "shellscript"
+    },
+    
+    // Exclude generated files and build artifacts
+    "files.exclude": {
+        "**/go/**/*.pb.go": false,
+        "**/node_modules": true,
+        "**/*.log": true
+    },
+    
+    // Protocol Buffer validation
+    "protoc": {
+        "options": [
+            "--proto_path=.",
+            "--go_out=go",
+            "--go-grpc_out=go"
+        ]
+    }
+}
