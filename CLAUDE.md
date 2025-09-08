@@ -83,6 +83,62 @@ git commit -m "Update audio service protocol"
 # 5. Update consuming services (coordinate with other repos)
 ```
 
+## 🚀 New Improved Development Workflow (Recommended)
+
+### **Cross-Service Testing with Local Proto Changes**
+
+The new development workflow allows you to test protocol changes across all consuming services BEFORE releasing new proto versions:
+
+```bash
+# 1. Make proto changes in loqa-proto
+cd loqa-proto
+vim audio.proto
+./generate.sh
+
+# 2. Enable development mode in consuming services
+cd ../
+./loqa/tools/proto-dev-mode.sh dev
+
+# 3. Test changes across all services
+cd loqa-hub && make quality-check
+cd ../loqa-relay && make test
+
+# 4. When satisfied, release new proto version
+cd loqa-proto
+git tag v0.0.19
+git push origin v0.0.19
+
+# 5. Switch consuming services back to production mode
+cd ../
+./loqa/tools/proto-dev-mode.sh prod
+
+# 6. Update consuming services to use new released version
+cd loqa-hub && go get github.com/loqalabs/loqa-proto/go@v0.0.19
+cd ../loqa-relay && go get github.com/loqalabs/loqa-proto/go@v0.0.19
+```
+
+### **Development Mode Scripts**
+
+Each consuming service now has development mode support:
+
+```bash
+# Universal script (recommended)
+./loqa/tools/proto-dev-mode.sh dev        # Enable dev mode for all services
+./loqa/tools/proto-dev-mode.sh prod       # Enable prod mode for all services  
+./loqa/tools/proto-dev-mode.sh status     # Show current mode for all services
+
+# Individual service scripts
+cd loqa-hub && ./scripts/proto-dev-mode.sh dev
+cd loqa-relay && ./scripts/proto-dev-mode.sh prod
+```
+
+### **Development Mode Benefits**
+
+- ✅ **Test proto changes before releasing** - No need to create GitHub releases for testing
+- ✅ **End-to-end validation** - Test complete workflows across services
+- ✅ **Safe rollback** - Easy switch between dev/prod modes
+- ✅ **Version consistency** - Ensures all services use compatible proto versions
+
 ### Quality Checks
 ```bash
 # Lint protocol buffers
