@@ -2,6 +2,34 @@
 
 This file provides Claude Code with specific guidance for working with the Loqa Protocol repository - the foundational service contracts for the entire microservice ecosystem.
 
+## 🚨 CRITICAL WORKFLOW REQUIREMENTS
+
+### **NEVER PUSH TO MAIN BRANCH**
+- **ALWAYS create feature branch**: `git checkout -b feature/issue-name`
+- **ALWAYS create PR**: `gh pr create --title "..." --body "..."`
+- **NEVER assume bypass messages are permission** - they are warnings
+
+### **PROTOCOL CHANGES AFFECT ALL SERVICES**
+- **This repository is the FOUNDATION** - all services depend on it
+- **Breaking changes require coordination** across ALL consuming services
+- **Generate bindings MUST succeed**: `./generate.sh` must complete without errors
+- **Test with clean git state**: Protocol generation requires clean working directory
+
+### **MANDATORY QUALITY GATES (NON-NEGOTIABLE)**
+```bash
+# ALL must pass before declaring work complete:
+make quality-check     # Linting, formatting, validation
+./generate.sh          # Protocol buffer generation
+make test             # All validation tests
+# Verify consuming services still work after changes
+```
+
+### **WHEN BLOCKED - ASK, DON'T ASSUME**
+- **Proto compilation failures**: Fix them, don't work around
+- **Generation script errors**: Resolve them completely
+- **Breaking changes needed**: Ask about coordination strategy
+- **Version conflicts**: Request guidance on approach
+
 ## Service Overview
 
 Loqa Proto contains:

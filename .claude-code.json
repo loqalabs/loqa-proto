@@ -1,5 +1,14 @@
 {
   "rules": [
+    "🚨 BLOCKING: NEVER push directly to main branch - ALWAYS create feature branches",
+    "🚨 BLOCKING: ALWAYS create PRs for review - even for simple changes",
+    "🚨 BLOCKING: ALL quality checks must PASS - make quality-check is NON-NEGOTIABLE",
+    "🚨 BLOCKING: Protocol generation must SUCCEED - ./generate.sh must work completely",
+    "🚨 BLOCKING: ALL dependent services must be verified after protocol changes",
+    "🚨 BLOCKING: End-to-end verification REQUIRED - never assume protocols work",
+    "🚨 BLOCKING: When blocked, ASK - never assume or work around errors",
+    "🚨 CRITICAL: This repository is FOUNDATION - all services depend on these protocols",
+    "🚨 MULTI-REPO: Peer services are in ../loqa-* directories - coordinate breaking changes",
     "NEVER use AI attribution in commit messages (no 'Generated with Claude Code' or Co-Authored-By lines)",
     "Always read existing files before making changes",
     "Prefer editing existing files over creating new ones when possible",
@@ -9,7 +18,6 @@
     "Update ALL affected documentation proactively without being asked",
     "Test that changes don't break existing functionality",
     "Maintain backward compatibility where possible",
-    "ALWAYS run 'make quality-check' before any git push or commit",
     "NEVER push code that fails protocol buffer linting or validation",
     "Ensure protocol buffer files are properly formatted with buf",
     "Run 'make format' to auto-format .proto files before manual edits",
