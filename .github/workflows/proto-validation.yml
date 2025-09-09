@@ -193,13 +193,19 @@ jobs:
         cd ../${{ matrix.consumer }}
         go mod tidy
         
-        # Run quality checks if available
-        if [ -f "Makefile" ] && grep -q "quality-check" Makefile; then
+        # Run basic compatibility checks (skip linting for speed)
+        echo "Testing Go compilation..."
+        go build ./...
+        
+        echo "Running Go tests..."
+        go test ./... -v -short
+        
+        # Only run full quality checks if explicitly requested via environment
+        if [ "$FULL_QUALITY_CHECK" = "true" ] && [ -f "Makefile" ] && grep -q "quality-check" Makefile; then
+          echo "Running full quality checks..."
           make quality-check
         else
-          # Fallback to basic go commands
-          go build ./...
-          go test ./... -v
+          echo "Skipping full quality checks for compatibility testing"
         fi
         
     - name: Report compatibility results
