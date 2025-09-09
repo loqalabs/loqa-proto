@@ -1,0 +1,155 @@
+name: Auto Release
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'docs/**'
+      - '.vscode/**'
+      - '*.md'
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+jobs:
+  check-changes:
+    name: Check for Release-Worthy Changes
+    runs-on: ubuntu-latest
+    outputs:
+      should-release: ${{ steps.check.outputs.should-release }}
+      release-type: ${{ steps.check.outputs.release-type }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+
+    - name: Check for protocol changes
+      id: check
+      run: |
+        # Get the latest tag (most recent release)
+        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+        
+        if [ -z "$LATEST_TAG" ]; then
+          echo "No previous release found, creating initial release"
+          echo "should-release=true" >> $GITHUB_OUTPUT
+          echo "release-type=minor" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        echo "Checking changes since $LATEST_TAG"
+        
+        # Check for breaking changes (major version bump)
+        BREAKING_CHANGES=$(git log $LATEST_TAG..HEAD --oneline --grep="BREAKING CHANGE" --grep="breaking:" -i | wc -l)
+        
+        # Check for protocol file changes (minor version bump)
+        PROTO_CHANGES=$(git diff $LATEST_TAG..HEAD --name-only | grep -E '\.(proto)$' | wc -l)
+        
+        # Check for generation script or build changes (patch version bump)
+        BUILD_CHANGES=$(git diff $LATEST_TAG..HEAD --name-only | grep -E '(generate\.sh|Makefile|buf\.yaml|go\.mod|package\.json)$' | wc -l)
+        
+        # Check if bindings were regenerated
+        BINDING_CHANGES=$(git diff $LATEST_TAG..HEAD --name-only | grep -E 'go/.*\.pb\.go$' | wc -l)
+        
+        echo "Breaking changes: $BREAKING_CHANGES"
+        echo "Protocol changes: $PROTO_CHANGES"  
+        echo "Build changes: $BUILD_CHANGES"
+        echo "Binding changes: $BINDING_CHANGES"
+        
+        if [ "$BREAKING_CHANGES" -gt 0 ]; then
+          echo "should-release=true" >> $GITHUB_OUTPUT
+          echo "release-type=major" >> $GITHUB_OUTPUT
+        elif [ "$PROTO_CHANGES" -gt 0 ] || [ "$BINDING_CHANGES" -gt 0 ]; then
+          echo "should-release=true" >> $GITHUB_OUTPUT
+          echo "release-type=minor" >> $GITHUB_OUTPUT
+        elif [ "$BUILD_CHANGES" -gt 0 ]; then
+          echo "should-release=true" >> $GITHUB_OUTPUT
+          echo "release-type=patch" >> $GITHUB_OUTPUT
+        else
+          echo "No significant changes detected, skipping release"
+          echo "should-release=false" >> $GITHUB_OUTPUT
+        fi
+
+  auto-release:
+    name: Create Automated Release
+    needs: check-changes
+    if: needs.check-changes.outputs.should-release == 'true'
+    uses: loqalabs/.github/.github/workflows/release-create-release.yml@main
+    with:
+      release-type: ${{ needs.check-changes.outputs.release-type }}
+      pre-release: false
+      draft: false
+      changelog-file: 'CHANGELOG.md'
+    secrets: inherit
+
+  update-consumers:
+    name: Notify Consumer Services
+    needs: [check-changes, auto-release]
+    if: needs.check-changes.outputs.should-release == 'true'
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        repo: ['loqa-hub', 'loqa-relay', 'loqa-skills']
+        
+    steps:
+    - name: Create update issue in consumer service
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const repo = '${{ matrix.repo }}';
+          const newVersion = '${{ needs.auto-release.outputs.release-version }}';
+          const releaseType = '${{ needs.check-changes.outputs.release-type }}';
+          
+          const title = `Update loqa-proto to ${newVersion}`;
+          const body = `
+          ## Protocol Update Available
+          
+          A new ${releaseType} release of \`loqa-proto\` is available: **${newVersion}**
+          
+          ### Changes
+          - View the full changelog: [Release ${newVersion}](https://github.com/loqalabs/loqa-proto/releases/tag/${newVersion})
+          
+          ### Action Required
+          Please update your \`go.mod\`:
+          \`\`\`bash
+          go get github.com/loqalabs/loqa-proto/go@${newVersion}
+          go mod tidy
+          \`\`\`
+          
+          ### Testing
+          - [ ] Run \`make quality-check\` 
+          - [ ] Run integration tests
+          - [ ] Verify protocol compatibility
+          
+          ---
+          *This issue was automatically created by the protocol release workflow.*
+          `;
+          
+          // Check if similar issue already exists
+          const existingIssues = await github.rest.issues.listForRepo({
+            owner: 'loqalabs',
+            repo: repo,
+            state: 'open',
+            labels: 'protocol-update'
+          });
+          
+          const existingIssue = existingIssues.data.find(issue => 
+            issue.title.includes(`Update loqa-proto to ${newVersion}`)
+          );
+          
+          if (!existingIssue) {
+            await github.rest.issues.create({
+              owner: 'loqalabs',
+              repo: repo,
+              title: title,
+              body: body,
+              labels: ['protocol-update', 'dependencies', 'automated']
+            });
+          }
