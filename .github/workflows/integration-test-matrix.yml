@@ -1,18 +1,19 @@
 name: Integration Test Matrix
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - '*.proto'
-      - 'generate.sh'
-      - 'go/**'
-  pull_request:
-    branches: [ main ]
-    paths:
-      - '*.proto'
-      - 'generate.sh'
-      - 'go/**'
+  # Temporarily disabled - consumer repositories not yet accessible
+  # push:
+  #   branches: [ main ]
+  #   paths:
+  #     - '*.proto'
+  #     - 'generate.sh'
+  #     - 'go/**'
+  # pull_request:
+  #   branches: [ main ]
+  #   paths:
+  #     - '*.proto'
+  #     - 'generate.sh'
+  #     - 'go/**'
   workflow_dispatch:
     inputs:
       force-full-matrix:
@@ -64,6 +65,8 @@ jobs:
     name: ${{ matrix.description }}
     runs-on: ubuntu-latest
     needs: prepare-matrix
+    
+    timeout-minutes: 15  # Force timeout after 15 minutes
     
     strategy:
       matrix:
