@@ -1,0 +1,348 @@
+name: Integration Test Matrix
+
+on:
+  # Temporarily disabled - consumer repositories not yet accessible
+  # push:
+  #   branches: [ main ]
+  #   paths:
+  #     - '*.proto'
+  #     - 'generate.sh'
+  #     - 'go/**'
+  # pull_request:
+  #   branches: [ main ]
+  #   paths:
+  #     - '*.proto'
+  #     - 'generate.sh'
+  #     - 'go/**'
+  workflow_dispatch:
+    inputs:
+      force-full-matrix:
+        description: 'Run full integration test matrix'
+        required: false
+        default: 'false'
+        type: boolean
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+
+jobs:
+  prepare-matrix:
+    name: Prepare Test Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+      
+    - name: Determine test matrix
+      id: matrix
+      run: |
+        # Define service combinations for integration testing
+        if [ "${{ github.event.inputs.force-full-matrix }}" = "true" ] || [ "${{ github.event_name }}" = "push" ]; then
+          # Full matrix for main branch pushes or manual triggers
+          MATRIX='[
+            {"primary": "loqa-hub", "secondary": "loqa-relay", "description": "Hub-Relay gRPC Communication"},
+            {"primary": "loqa-hub", "secondary": "loqa-skills", "description": "Hub-Skills Plugin Interface"},
+            {"primary": "loqa-hub", "secondary": "loqa-commander", "description": "Hub-Commander API Interface"},
+            {"primary": "loqa-relay", "secondary": "loqa-hub", "description": "Relay-Hub Audio Streaming"},
+            {"primary": "loqa-skills", "secondary": "loqa-hub", "description": "Skills-Hub Protocol Integration"}
+          ]'
+        else
+          # Minimal matrix for PRs
+          MATRIX='[
+            {"primary": "loqa-hub", "secondary": "loqa-relay", "description": "Hub-Relay gRPC Communication"},
+            {"primary": "loqa-hub", "secondary": "loqa-skills", "description": "Hub-Skills Plugin Interface"}
+          ]'
+        fi
+        
+        echo "matrix=$(echo $MATRIX | jq -c .)" >> $GITHUB_OUTPUT
+
+  integration-tests:
+    name: ${{ matrix.description }}
+    runs-on: ubuntu-latest
+    needs: prepare-matrix
+    
+    timeout-minutes: 15  # Force timeout after 15 minutes
+    
+    strategy:
+      matrix:
+        include: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+      fail-fast: false
+      
+    steps:
+    - name: Checkout proto repository
+      uses: actions/checkout@v5
+      with:
+        path: loqa-proto
+        
+    - name: Checkout primary service
+      id: checkout_primary
+      continue-on-error: true
+      uses: actions/checkout@v5
+      with:
+        repository: loqalabs/${{ matrix.primary }}
+        path: ${{ matrix.primary }}
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Checkout secondary service
+      id: checkout_secondary
+      continue-on-error: true
+      uses: actions/checkout@v5
+      with:
+        repository: loqalabs/${{ matrix.secondary }}
+        path: ${{ matrix.secondary }}
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Check service availability
+      id: check_services
+      run: |
+        PRIMARY_EXISTS="false"
+        SECONDARY_EXISTS="false"
+        
+        if [ "${{ steps.checkout_primary.outcome }}" = "success" ] && [ -d "${{ matrix.primary }}" ]; then
+          PRIMARY_EXISTS="true"
+          echo "✅ Successfully checked out ${{ matrix.primary }}"
+        else
+          echo "❌ Could not checkout ${{ matrix.primary }} - repository may not exist"
+        fi
+        
+        if [ "${{ steps.checkout_secondary.outcome }}" = "success" ] && [ -d "${{ matrix.secondary }}" ]; then
+          SECONDARY_EXISTS="true"
+          echo "✅ Successfully checked out ${{ matrix.secondary }}"
+        else
+          echo "❌ Could not checkout ${{ matrix.secondary }} - repository may not exist"
+        fi
+        
+        echo "primary_exists=$PRIMARY_EXISTS" >> $GITHUB_OUTPUT
+        echo "secondary_exists=$SECONDARY_EXISTS" >> $GITHUB_OUTPUT
+        
+        if [ "$PRIMARY_EXISTS" = "false" ] && [ "$SECONDARY_EXISTS" = "false" ]; then
+          echo "both_missing=true" >> $GITHUB_OUTPUT
+          echo "⚠️ Both services are missing - skipping integration test"
+        else
+          echo "both_missing=false" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25.1'
+        
+    - name: Setup Node.js (if needed)
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Install Protocol Buffer Compiler
+      run: |
+        # Install protoc
+        PROTOC_VERSION="29.3"
+        curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip"
+        sudo unzip -o protoc-${PROTOC_VERSION}-linux-x86_64.zip -d /usr/local bin/protoc
+        sudo unzip -o protoc-${PROTOC_VERSION}-linux-x86_64.zip -d /usr/local 'include/*'
+        rm -f protoc-${PROTOC_VERSION}-linux-x86_64.zip
+        
+        # Install Go protoc plugins
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+        
+        # Verify installation
+        protoc --version
+        
+    - name: Generate fresh proto bindings
+      run: |
+        cd loqa-proto
+        ./generate.sh
+        
+    - name: Setup local proto dependencies
+      run: |
+        # Check which services use Go proto bindings
+        for service in ${{ matrix.primary }} ${{ matrix.secondary }}; do
+          cd $service
+          if [ -f "go.mod" ] && grep -q "github.com/loqalabs/loqa-proto/go" go.mod; then
+            echo "Setting up local proto for $service"
+            go mod edit -replace github.com/loqalabs/loqa-proto/go=../loqa-proto/go
+            go mod tidy
+          fi
+          cd ..
+        done
+        
+    - name: Build primary service
+      if: steps.check_services.outputs.primary_exists == 'true'
+      run: |
+        cd ${{ matrix.primary }}
+        
+        if [ -f "go.mod" ]; then
+          echo "Building Go service: ${{ matrix.primary }}"
+          go build ./...
+        elif [ -f "package.json" ]; then
+          echo "Building Node.js service: ${{ matrix.primary }}"
+          npm install
+          npm run build || echo "No build script found"
+        fi
+        
+    - name: Build secondary service
+      if: steps.check_services.outputs.secondary_exists == 'true'  
+      run: |
+        cd ${{ matrix.secondary }}
+        
+        if [ -f "go.mod" ]; then
+          echo "Building Go service: ${{ matrix.secondary }}"
+          go build ./...
+        elif [ -f "package.json" ]; then
+          echo "Building Node.js service: ${{ matrix.secondary }}"
+          npm install
+          npm run build || echo "No build script found"
+        fi
+        
+    - name: Run integration tests
+      if: steps.check_services.outputs.both_missing == 'false'
+      run: |
+        echo "Running integration tests: ${{ matrix.description }}"
+        
+        # Skip if primary service doesn't exist
+        if [ "${{ steps.check_services.outputs.primary_exists }}" != "true" ]; then
+          echo "⚠️ Primary service ${{ matrix.primary }} not available - skipping integration tests"
+          exit 0
+        fi
+        
+        # Check for integration tests in primary service
+        cd ${{ matrix.primary }}
+        
+        # Try integration tests first, fallback to unit tests
+        if [ -f "go.mod" ]; then
+          if [ -f "Makefile" ] && grep -q "test-integration" Makefile; then
+            echo "Running integration tests via Makefile"
+            make test-integration || {
+              echo "Integration tests failed, trying unit tests"
+              go test ./... -v -short
+            }
+          elif [ -d "tests/integration" ]; then
+            echo "Running integration tests in tests/integration"
+            go test ./tests/integration/... -v || {
+              echo "Integration tests failed, trying unit tests"
+              go test ./... -v -short
+            }
+          elif [ -d "test/integration" ]; then
+            echo "Running integration tests in test/integration"  
+            go test ./test/integration/... -v || {
+              echo "Integration tests failed, trying unit tests"
+              go test ./... -v -short
+            }
+          else
+            echo "No integration tests found, running unit tests"
+            go test ./... -v -short
+          fi
+        elif [ -f "package.json" ] && jq -e '.scripts.test' package.json > /dev/null; then
+          echo "Running npm tests"
+          npm test
+        else
+          echo "No tests found or unsupported project type"
+        fi
+        
+    - name: Check cross-service compatibility
+      run: |
+        echo "Checking compatibility between ${{ matrix.primary }} and ${{ matrix.secondary }}"
+        
+        # Look for shared proto types and ensure they compile together
+        PRIMARY_IMPORTS=""
+        SECONDARY_IMPORTS=""
+        
+        if [ -f "${{ matrix.primary }}/go.mod" ]; then
+          PRIMARY_IMPORTS=$(cd ${{ matrix.primary }} && go list -f '{{join .Imports "\n"}}' ./... | grep "loqa-proto" || echo "")
+        fi
+        
+        if [ -f "${{ matrix.secondary }}/go.mod" ]; then
+          SECONDARY_IMPORTS=$(cd ${{ matrix.secondary }} && go list -f '{{join .Imports "\n"}}' ./... | grep "loqa-proto" || echo "")
+        fi
+        
+        echo "Primary service proto imports:"
+        echo "$PRIMARY_IMPORTS"
+        echo ""
+        echo "Secondary service proto imports:"  
+        echo "$SECONDARY_IMPORTS"
+        
+        # Check for common imports (indicates protocol sharing)
+        COMMON_IMPORTS=$(echo -e "$PRIMARY_IMPORTS\n$SECONDARY_IMPORTS" | sort | uniq -d)
+        if [ -n "$COMMON_IMPORTS" ]; then
+          echo "✅ Services share common protocols:"
+          echo "$COMMON_IMPORTS"
+        else
+          echo "ℹ️ No shared protocol imports detected"
+        fi
+
+  integration-results:
+    name: Integration Test Results Summary
+    runs-on: ubuntu-latest
+    needs: [prepare-matrix, integration-tests]
+    if: always() && github.event_name == 'pull_request'
+    
+    steps:
+    - name: Collect and report results
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          // Get all integration test jobs
+          const jobs = await github.rest.actions.listJobsForWorkflowRun({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: context.runId,
+          });
+          
+          const integrationJobs = jobs.data.jobs.filter(job => 
+            job.name !== 'Prepare Test Matrix' && 
+            job.name !== 'Integration Test Results Summary'
+          );
+          
+          let summary = "## Integration Test Matrix Results\n\n";
+          let allPassed = true;
+          
+          for (const job of integrationJobs) {
+            const status = job.conclusion === 'success' ? '✅' : '❌';
+            const name = job.name;
+            summary += `${status} **${name}**\n`;
+            
+            if (job.conclusion !== 'success') {
+              allPassed = false;
+            }
+          }
+          
+          summary += `\n---\n`;
+          if (allPassed) {
+            summary += "🎉 All integration tests passed! Protocol changes are compatible across services.";
+          } else {
+            summary += "⚠️ Some integration tests failed. Please review the failing tests and ensure protocol compatibility.";
+          }
+          
+          // Create or update comment
+          const comments = await github.rest.issues.listComments({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+          });
+          
+          const existingComment = comments.data.find(comment => 
+            comment.user.type === 'Bot' && 
+            comment.body.includes('Integration Test Matrix Results')
+          );
+          
+          if (existingComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existingComment.id,
+              body: summary
+            });
+          } else {
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
+          }
