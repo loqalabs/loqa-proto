@@ -1,19 +1,7 @@
 name: Integration Test Matrix
 
 on:
-  # Temporarily disabled - consumer repositories not yet accessible
-  # push:
-  #   branches: [ main ]
-  #   paths:
-  #     - '*.proto'
-  #     - 'generate.sh'
-  #     - 'go/**'
-  # pull_request:
-  #   branches: [ main ]
-  #   paths:
-  #     - '*.proto'
-  #     - 'generate.sh'
-  #     - 'go/**'
+  # Manual trigger only until consumer repositories are accessible
   workflow_dispatch:
     inputs:
       force-full-matrix:
