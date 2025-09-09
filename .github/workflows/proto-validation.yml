@@ -42,10 +42,17 @@ jobs:
     if: github.event_name == 'pull_request'
     
     steps:
-    - name: Checkout PR code
+    - name: Checkout base branch
       uses: actions/checkout@v5
       with:
-        fetch-depth: 0
+        ref: ${{ github.base_ref }}
+        path: base
+        
+    - name: Checkout PR branch
+      uses: actions/checkout@v5
+      with:
+        ref: ${{ github.head_ref }}
+        path: pr
         
     - name: Install buf
       uses: bufbuild/buf-setup-action@v1
@@ -53,12 +60,23 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Check for breaking changes
+      id: breaking_check
+      continue-on-error: true
       run: |
-        # Check against main branch
-        buf breaking --against '.git#branch=main'
+        cd pr
+        
+        # Use buf to check for breaking changes against the base branch
+        buf breaking --against ../base || {
+          echo "breaking_changes_detected=true" >> $GITHUB_OUTPUT
+          echo "Breaking changes detected!"
+          exit 1
+        }
+        
+        echo "breaking_changes_detected=false" >> $GITHUB_OUTPUT
+        echo "No breaking changes detected."
         
     - name: Comment on PR if breaking changes detected
-      if: failure()
+      if: steps.breaking_check.outputs.breaking_changes_detected == 'true'
       uses: actions/github-script@v7
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
