@@ -143,11 +143,25 @@ jobs:
         path: loqa-proto
         
     - name: Checkout consumer service
+      id: checkout_consumer
+      continue-on-error: true
       uses: actions/checkout@v5
       with:
         repository: loqalabs/${{ matrix.consumer }}
         path: ${{ matrix.consumer }}
         token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Check if consumer service exists
+      id: check_consumer
+      run: |
+        if [ "${{ steps.checkout_consumer.outcome }}" = "success" ] && [ -d "${{ matrix.consumer }}" ]; then
+          echo "consumer_exists=true" >> $GITHUB_OUTPUT
+          echo "✅ Successfully checked out ${{ matrix.consumer }}"
+        else
+          echo "consumer_exists=false" >> $GITHUB_OUTPUT
+          echo "❌ Could not checkout ${{ matrix.consumer }} - repository may not exist or not be accessible"
+          echo "This is expected if the service repository doesn't exist yet."
+        fi
         
     - name: Setup Go
       uses: actions/setup-go@v5
@@ -173,6 +187,7 @@ jobs:
         which protoc-gen-go-grpc
         
     - name: Test consumer service with proto changes
+      if: steps.check_consumer.outputs.consumer_exists == 'true'
       run: |
         cd ${{ matrix.consumer }}
         
@@ -215,11 +230,17 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
           const service = '${{ matrix.consumer }}';
+          const consumerExists = '${{ steps.check_consumer.outputs.consumer_exists }}' === 'true';
           const success = '${{ job.status }}' === 'success';
           
-          const message = success ? 
-            `✅ **${service}** - Compatible with protocol changes` :
-            `❌ **${service}** - Compatibility issues detected`;
+          let message;
+          if (!consumerExists) {
+            message = `⏭️ **${service}** - Repository not accessible, skipped`;
+          } else {
+            message = success ? 
+              `✅ **${service}** - Compatible with protocol changes` :
+              `❌ **${service}** - Compatibility issues detected`;
+          }
             
           // Find existing comment or create new one
           const comments = await github.rest.issues.listComments({

@@ -77,6 +77,8 @@ jobs:
         path: loqa-proto
         
     - name: Checkout primary service
+      id: checkout_primary
+      continue-on-error: true
       uses: actions/checkout@v5
       with:
         repository: loqalabs/${{ matrix.primary }}
@@ -84,11 +86,43 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Checkout secondary service
+      id: checkout_secondary
+      continue-on-error: true
       uses: actions/checkout@v5
       with:
         repository: loqalabs/${{ matrix.secondary }}
         path: ${{ matrix.secondary }}
         token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Check service availability
+      id: check_services
+      run: |
+        PRIMARY_EXISTS="false"
+        SECONDARY_EXISTS="false"
+        
+        if [ "${{ steps.checkout_primary.outcome }}" = "success" ] && [ -d "${{ matrix.primary }}" ]; then
+          PRIMARY_EXISTS="true"
+          echo "✅ Successfully checked out ${{ matrix.primary }}"
+        else
+          echo "❌ Could not checkout ${{ matrix.primary }} - repository may not exist"
+        fi
+        
+        if [ "${{ steps.checkout_secondary.outcome }}" = "success" ] && [ -d "${{ matrix.secondary }}" ]; then
+          SECONDARY_EXISTS="true"
+          echo "✅ Successfully checked out ${{ matrix.secondary }}"
+        else
+          echo "❌ Could not checkout ${{ matrix.secondary }} - repository may not exist"
+        fi
+        
+        echo "primary_exists=$PRIMARY_EXISTS" >> $GITHUB_OUTPUT
+        echo "secondary_exists=$SECONDARY_EXISTS" >> $GITHUB_OUTPUT
+        
+        if [ "$PRIMARY_EXISTS" = "false" ] && [ "$SECONDARY_EXISTS" = "false" ]; then
+          echo "both_missing=true" >> $GITHUB_OUTPUT
+          echo "⚠️ Both services are missing - skipping integration test"
+        else
+          echo "both_missing=false" >> $GITHUB_OUTPUT
+        fi
         
     - name: Setup Go
       uses: actions/setup-go@v5
@@ -135,6 +169,7 @@ jobs:
         done
         
     - name: Build primary service
+      if: steps.check_services.outputs.primary_exists == 'true'
       run: |
         cd ${{ matrix.primary }}
         
@@ -147,7 +182,8 @@ jobs:
           npm run build || echo "No build script found"
         fi
         
-    - name: Build secondary service  
+    - name: Build secondary service
+      if: steps.check_services.outputs.secondary_exists == 'true'  
       run: |
         cd ${{ matrix.secondary }}
         
@@ -161,8 +197,15 @@ jobs:
         fi
         
     - name: Run integration tests
+      if: steps.check_services.outputs.both_missing == 'false'
       run: |
         echo "Running integration tests: ${{ matrix.description }}"
+        
+        # Skip if primary service doesn't exist
+        if [ "${{ steps.check_services.outputs.primary_exists }}" != "true" ]; then
+          echo "⚠️ Primary service ${{ matrix.primary }} not available - skipping integration tests"
+          exit 0
+        fi
         
         # Check for integration tests in primary service
         cd ${{ matrix.primary }}
