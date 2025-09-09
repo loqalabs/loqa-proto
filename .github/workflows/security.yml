@@ -5,6 +5,10 @@ on:
     # Weekly security scan on Sundays at 3 AM UTC
     - cron: '0 3 * * 0'
   workflow_dispatch:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
 
 jobs:
   security:
