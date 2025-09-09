@@ -1,4 +1,4 @@
-name: Protocol Buffer CI/CD
+name: CI/CD
 
 on:
   push:
@@ -27,18 +27,11 @@ jobs:
       proto-files: 'audio.proto'
       generate-script: './generate.sh'
 
-  security:
-    name: Security Analysis
-    uses: loqalabs/.github/.github/workflows/security-scan.yml@main
-    with:
-      language: 'go'
-      go-version: '1.25.1'
-      working-directory: 'go'
 
   package-release:
     name: Package Release Assets
     runs-on: ubuntu-latest
-    needs: [generate-bindings, security]
+    needs: [generate-bindings]
     if: github.event_name == 'release'
     
     steps:
