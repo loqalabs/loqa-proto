@@ -15,7 +15,7 @@ permissions:
   security-events: write
 
 jobs:
-  security:
+  security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
     
