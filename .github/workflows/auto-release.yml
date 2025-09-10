@@ -29,7 +29,11 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Check for protocol changes
+    - name: Install analysis dependencies
+      run: |
+        sudo apt-get update && sudo apt-get install -y jq
+
+    - name: Check for protocol changes (Enhanced Analysis)
       id: check
       run: |
         # Get the latest tag (most recent release)
@@ -39,41 +43,51 @@ jobs:
           echo "No previous release found, creating initial release"
           echo "should-release=true" >> $GITHUB_OUTPUT
           echo "release-type=minor" >> $GITHUB_OUTPUT
+          echo "analysis-result={\"version_bump\":\"minor\",\"reason\":\"initial_release\"}" >> $GITHUB_OUTPUT
           exit 0
         fi
         
-        echo "Checking changes since $LATEST_TAG"
+        echo "Analyzing protocol changes since $LATEST_TAG using enhanced detection"
         
-        # Check for breaking changes (major version bump)
-        BREAKING_CHANGES=$(git log $LATEST_TAG..HEAD --oneline --grep="BREAKING CHANGE" --grep="breaking:" -i | wc -l)
+        # Use enhanced proto change analysis
+        chmod +x scripts/analyze-proto-changes.sh
+        ANALYSIS_RESULT=$(./scripts/analyze-proto-changes.sh "$LATEST_TAG" HEAD)
         
-        # Check for protocol file changes (minor version bump)
-        PROTO_CHANGES=$(git diff $LATEST_TAG..HEAD --name-only | grep -E '\.(proto)$' | wc -l)
+        echo "Analysis result: $ANALYSIS_RESULT"
         
-        # Check for generation script or build changes (patch version bump)
-        BUILD_CHANGES=$(git diff $LATEST_TAG..HEAD --name-only | grep -E '(generate\.sh|Makefile|buf\.yaml|go\.mod|package\.json)$' | wc -l)
+        # Extract version bump recommendation
+        VERSION_BUMP=$(echo "$ANALYSIS_RESULT" | jq -r '.version_bump')
+        REASON=$(echo "$ANALYSIS_RESULT" | jq -r '.reason')
+        BREAKING_COUNT=$(echo "$ANALYSIS_RESULT" | jq -r '.breaking_changes')
+        NEW_FEATURES=$(echo "$ANALYSIS_RESULT" | jq -r '.new_features')
         
-        # Check if bindings were regenerated
+        echo "Recommended version bump: $VERSION_BUMP ($REASON)"
+        echo "Breaking changes detected: $BREAKING_COUNT"
+        echo "New features detected: $NEW_FEATURES"
+        
+        # Also check for non-proto changes that might warrant a release
+        BUILD_CHANGES=$(git diff $LATEST_TAG..HEAD --name-only | grep -E '(generate\.sh|Makefile|buf\.yaml|go\.mod|package\.json|\.github/)$' | wc -l)
         BINDING_CHANGES=$(git diff $LATEST_TAG..HEAD --name-only | grep -E 'go/.*\.pb\.go$' | wc -l)
         
-        echo "Breaking changes: $BREAKING_CHANGES"
-        echo "Protocol changes: $PROTO_CHANGES"  
-        echo "Build changes: $BUILD_CHANGES"
-        echo "Binding changes: $BINDING_CHANGES"
+        echo "Build/workflow changes: $BUILD_CHANGES"
+        echo "Generated binding changes: $BINDING_CHANGES"
         
-        if [ "$BREAKING_CHANGES" -gt 0 ]; then
+        # Determine final release decision
+        if [ "$VERSION_BUMP" != "none" ]; then
           echo "should-release=true" >> $GITHUB_OUTPUT
-          echo "release-type=major" >> $GITHUB_OUTPUT
-        elif [ "$PROTO_CHANGES" -gt 0 ] || [ "$BINDING_CHANGES" -gt 0 ]; then
-          echo "should-release=true" >> $GITHUB_OUTPUT
-          echo "release-type=minor" >> $GITHUB_OUTPUT
-        elif [ "$BUILD_CHANGES" -gt 0 ]; then
+          echo "release-type=$VERSION_BUMP" >> $GITHUB_OUTPUT
+        elif [ "$BUILD_CHANGES" -gt 0 ] || [ "$BINDING_CHANGES" -gt 0 ]; then
           echo "should-release=true" >> $GITHUB_OUTPUT
           echo "release-type=patch" >> $GITHUB_OUTPUT
+          # Update analysis result for patch release
+          ANALYSIS_RESULT=$(echo "$ANALYSIS_RESULT" | jq '.version_bump = "patch" | .reason = "build_or_binding_changes"')
         else
           echo "No significant changes detected, skipping release"
           echo "should-release=false" >> $GITHUB_OUTPUT
         fi
+        
+        # Store detailed analysis for later use
+        echo "analysis-result=$ANALYSIS_RESULT" >> $GITHUB_OUTPUT
 
   auto-release:
     name: Create Automated Release

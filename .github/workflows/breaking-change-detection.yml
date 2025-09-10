@@ -1,0 +1,248 @@
+name: Breaking Change Detection
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '*.proto'
+      - 'go/**'
+      - 'scripts/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  detect-breaking-changes:
+    name: Detect Protocol Breaking Changes
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout PR code
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+
+    - name: Install analysis dependencies
+      run: |
+        sudo apt-get update && sudo apt-get install -y jq
+
+    - name: Analyze protocol changes
+      id: analyze
+      run: |
+        # Get the base branch (target of PR)
+        BASE_REF="origin/${{ github.base_ref }}"
+        HEAD_REF="${{ github.sha }}"
+        
+        echo "Analyzing changes from $BASE_REF to $HEAD_REF"
+        
+        # Run enhanced proto analysis
+        chmod +x scripts/analyze-proto-changes.sh
+        ANALYSIS_RESULT=$(./scripts/analyze-proto-changes.sh "$BASE_REF" "$HEAD_REF")
+        
+        echo "Analysis result: $ANALYSIS_RESULT"
+        
+        # Extract key information
+        VERSION_BUMP=$(echo "$ANALYSIS_RESULT" | jq -r '.version_bump')
+        REASON=$(echo "$ANALYSIS_RESULT" | jq -r '.reason')
+        BREAKING_COUNT=$(echo "$ANALYSIS_RESULT" | jq -r '.breaking_changes // 0')
+        NEW_FEATURES=$(echo "$ANALYSIS_RESULT" | jq -r '.new_features // 0')
+        CHANGED_FILES=$(echo "$ANALYSIS_RESULT" | jq -r '.changed_files // 0')
+        
+        echo "version-bump=$VERSION_BUMP" >> $GITHUB_OUTPUT
+        echo "reason=$REASON" >> $GITHUB_OUTPUT
+        echo "breaking-count=$BREAKING_COUNT" >> $GITHUB_OUTPUT
+        echo "new-features=$NEW_FEATURES" >> $GITHUB_OUTPUT
+        echo "changed-files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+        
+        # Store full analysis for comment
+        echo "full-analysis<<EOF" >> $GITHUB_OUTPUT
+        echo "$ANALYSIS_RESULT" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Check for breaking changes (Blocking)
+      if: steps.analyze.outputs.breaking-count > 0
+      run: |
+        echo "❌ Breaking changes detected!"
+        echo "This PR contains ${{ steps.analyze.outputs.breaking-count }} breaking changes."
+        echo "Breaking changes require special coordination across all consuming services."
+        echo ""
+        echo "To proceed with breaking changes:"
+        echo "1. Create feature branches in ALL consuming services (loqa-hub, loqa-relay, loqa-skills)"
+        echo "2. Update those services to handle the breaking changes"
+        echo "3. Coordinate merge timing across all repositories"
+        echo "4. Add 'BREAKING CHANGE:' to your commit message"
+        echo ""
+        exit 1
+
+    - name: Generate analysis comment
+      if: steps.analyze.outputs.changed-files > 0
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const analysis = JSON.parse(`${{ steps.analyze.outputs.full-analysis }}`);
+          const versionBump = '${{ steps.analyze.outputs.version-bump }}';
+          const reason = '${{ steps.analyze.outputs.reason }}';
+          const breakingCount = '${{ steps.analyze.outputs.breaking-count }}';
+          const newFeatures = '${{ steps.analyze.outputs.new-features }}';
+          
+          // Create status emoji
+          const statusEmoji = breakingCount > 0 ? '🚨' : newFeatures > 0 ? '✨' : '🔧';
+          const statusText = breakingCount > 0 ? 'Breaking Changes' : newFeatures > 0 ? 'New Features' : 'Non-Breaking Changes';
+          
+          // Build comment body
+          let body = `## ${statusEmoji} Protocol Change Analysis
+          
+          **Impact Level:** ${statusText}
+          **Recommended Version Bump:** \`${versionBump}\`
+          **Reason:** ${reason.replace(/_/g, ' ')}
+          
+          ### Summary
+          - **Breaking Changes:** ${breakingCount}
+          - **New Features:** ${newFeatures}
+          - **Changed Files:** ${{ steps.analyze.outputs.changed-files }}
+          `;
+          
+          if (breakingCount > 0) {
+            body += `
+          ### ⚠️ Breaking Changes Detected
+          
+          This PR contains breaking changes that will require updates to consuming services:
+          - loqa-hub
+          - loqa-relay  
+          - loqa-skills
+          
+          **Required Actions:**
+          1. Create feature branches in all consuming services
+          2. Update services to handle protocol changes
+          3. Test cross-service compatibility
+          4. Coordinate merge timing
+          5. Add \`BREAKING CHANGE:\` to commit messages
+          `;
+          }
+          
+          if (newFeatures > 0) {
+            body += `
+          ### ✨ New Features Added
+          
+          This PR adds new functionality that is backward compatible.
+          Consuming services can optionally adopt these features.
+          `;
+          }
+          
+          // Add detailed file analysis if available
+          if (analysis.details && Object.keys(analysis.details).length > 0) {
+            body += `
+          ### 📁 Detailed File Analysis
+          
+          <details>
+          <summary>Click to expand detailed analysis</summary>
+          
+          \`\`\`json
+          ${JSON.stringify(analysis, null, 2)}
+          \`\`\`
+          
+          </details>
+          `;
+          }
+          
+          body += `
+          ### 🚀 Next Steps
+          
+          `;
+          
+          if (versionBump === 'major') {
+            body += `
+          This will trigger a **major version release** (${versionBump}) when merged.
+          
+          - Coordinate with all service teams before merging
+          - Ensure consuming services are ready for breaking changes
+          - Plan deployment sequence carefully
+          `;
+          } else if (versionBump === 'minor') {
+            body += `
+          This will trigger a **minor version release** (${versionBump}) when merged.
+          
+          - New features will be available to consuming services
+          - Existing functionality remains compatible
+          - Services can adopt new features incrementally
+          `;
+          } else {
+            body += `
+          This will trigger a **patch version release** (${versionBump}) when merged.
+          
+          - Changes are backward compatible
+          - No action required in consuming services
+          - Update will be available automatically
+          `;
+          }
+          
+          // Post or update comment
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          
+          const existingComment = comments.find(comment => 
+            comment.user.login === 'github-actions[bot]' && 
+            comment.body.includes('Protocol Change Analysis')
+          );
+          
+          if (existingComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existingComment.id,
+              body: body
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+          }
+
+    - name: Set check status
+      uses: actions/github-script@v7
+      if: always()
+      with:
+        script: |
+          const breakingCount = parseInt('${{ steps.analyze.outputs.breaking-count }}' || '0');
+          const versionBump = '${{ steps.analyze.outputs.version-bump }}';
+          
+          let conclusion, title, summary;
+          
+          if (breakingCount > 0) {
+            conclusion = 'failure';
+            title = '🚨 Breaking Changes Detected';
+            summary = `This PR contains ${breakingCount} breaking changes requiring coordination.`;
+          } else if (versionBump === 'minor') {
+            conclusion = 'success';
+            title = '✨ New Features Added';
+            summary = 'This PR adds backward-compatible features.';
+          } else if (versionBump === 'patch') {
+            conclusion = 'success';
+            title = '🔧 Non-Breaking Changes';
+            summary = 'This PR contains backward-compatible changes.';
+          } else {
+            conclusion = 'success';
+            title = '✅ No Protocol Changes';
+            summary = 'No significant protocol changes detected.';
+          }
+          
+          await github.rest.checks.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            name: 'Protocol Breaking Change Detection',
+            head_sha: context.sha,
+            status: 'completed',
+            conclusion: conclusion,
+            output: {
+              title: title,
+              summary: summary
+            }
+          });
