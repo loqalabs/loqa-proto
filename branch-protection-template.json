@@ -2,9 +2,8 @@
   "required_status_checks": {
     "strict": true,
     "contexts": [
-      "Check Commit Messages",
-      "Generate Protocol Buffer Bindings",
-      "Validate Protocol Buffers"
+      "Check Commit Messages / Check Commit Messages",
+      "Generate Protocol Buffer Bindings / Validate Protocol Buffers"
     ]
   },
   "enforce_admins": false,
